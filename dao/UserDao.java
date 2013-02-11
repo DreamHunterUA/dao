@@ -18,4 +18,5 @@ public interface UserDao {
     public void insert(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException;
     public int InsertWithReturnGeneratedKeys(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException;
     public void BulkInsert(List<User> Users) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException;
+    public void insertLongSQL(List<User> Users) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException;
 }

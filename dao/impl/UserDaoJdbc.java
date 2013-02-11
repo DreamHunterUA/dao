@@ -1,6 +1,7 @@
 package net.golovach.dao.dao.impl;
 
 import com.mysql.jdbc.Driver;
+import com.sun.deploy.util.StringQuoteUtil;
 import net.golovach.dao.bean.User;
 import net.golovach.dao.dao.UserDao;
 import net.golovach.dao.exception.DBException;
@@ -211,7 +212,31 @@ public class UserDaoJdbc implements UserDao {
         }
     }
 
+    @Override
+    public void insertLongSQL(List<User> Users) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
 
+        Connection conn = getConnection();
+        PreparedStatement ps = null;
+        try {
+            PrepareConnection(conn);
+            for(User user:Users){
+                CheckInputUserData(user, conn);
+                ps = conn.prepareStatement(INSERT_SQL);
+                ps.setString(1, user.getLogin());
+                ps.setString(2, user.getEmail());
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            JdbcUtils.rollbackQuietly(conn);
+            throw new DBException("Can't execute SQL = '" + INSERT_SQL + "'  "+e.getMessage(), e);
+        } finally {
+            JdbcUtils.closeQuietly(ps);
+            JdbcUtils.closeQuietly(conn);
+        }
+
+    }
 
 
     private void CheckInputUserData(User user, Connection conn) throws SQLException, NotUniqueUserLoginException, NotUniqueUserEmailException {
