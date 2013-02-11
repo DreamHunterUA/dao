@@ -1,5 +1,7 @@
 package net.golovach.dao.bean;
 
+
+
 public class User {
     private final int id;
     private String login;

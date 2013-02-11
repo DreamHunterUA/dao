@@ -1,7 +1,7 @@
 package net.golovach.dao.dao.impl;
 
-import com.mysql.jdbc.*;
 import com.mysql.jdbc.Driver;
+import com.sun.deploy.util.StringQuoteUtil;
 import net.golovach.dao.bean.User;
 import net.golovach.dao.dao.UserDao;
 import net.golovach.dao.exception.DBException;
@@ -127,7 +127,7 @@ public class UserDaoJdbc implements UserDao {
     }
 
     @Override
-    public void insert(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+    public void insert(User user) throws DBException {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         try {
@@ -154,8 +154,18 @@ public class UserDaoJdbc implements UserDao {
         return ps;
     }
 
+    private void BatchInsertPreparedStatement(List<User> users, Connection conn, int statement) throws SQLException {
+        PreparedStatement ps = conn.prepareStatement(INSERT_SQL, statement);
+        for(User user:users){
+            ps.setString(1, user.getLogin());
+            ps.setString(2, user.getEmail());
+            ps.addBatch();
+        }
+        ps.executeBatch();
+    }
+
     @Override
-    public int InsertWithReturnGeneratedKeys(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+    public int InsertWithReturnGeneratedKeys(User user) throws DBException {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         int key = -1;
@@ -179,6 +189,55 @@ public class UserDaoJdbc implements UserDao {
             JdbcUtils.closeQuietly(conn);
         }
     }
+
+    @Override
+    public void BulkInsert(List<User> Users) throws DBException {
+        Connection conn = getConnection();
+        PreparedStatement ps = null;
+        try {
+            PrepareConnection(conn);
+            for(User user:Users)
+                CheckInputUserData(user, conn);
+
+            BatchInsertPreparedStatement(Users, conn, Statement.NO_GENERATED_KEYS);
+
+            conn.commit();
+
+        } catch (SQLException e) {
+            JdbcUtils.rollbackQuietly(conn);
+            throw new DBException("Can't execute SQL = '" + INSERT_SQL + "'", e);
+        } finally {
+            JdbcUtils.closeQuietly(ps);
+            JdbcUtils.closeQuietly(conn);
+        }
+    }
+
+    @Override
+    public void insertLongSQL(List<User> Users) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+
+        Connection conn = getConnection();
+        PreparedStatement ps = null;
+        try {
+            PrepareConnection(conn);
+            for(User user:Users){
+                CheckInputUserData(user, conn);
+                ps = conn.prepareStatement(INSERT_SQL);
+                ps.setString(1, user.getLogin());
+                ps.setString(2, user.getEmail());
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            JdbcUtils.rollbackQuietly(conn);
+            throw new DBException("Can't execute SQL = '" + INSERT_SQL + "'  "+e.getMessage(), e);
+        } finally {
+            JdbcUtils.closeQuietly(ps);
+            JdbcUtils.closeQuietly(conn);
+        }
+
+    }
+
 
     private void CheckInputUserData(User user, Connection conn) throws SQLException, NotUniqueUserLoginException, NotUniqueUserEmailException {
         if (existWithLogin0(conn, user.getLogin())) {
