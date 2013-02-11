@@ -1,6 +1,5 @@
 package net.golovach.dao.dao.impl;
 
-import com.mysql.jdbc.*;
 import com.mysql.jdbc.Driver;
 import net.golovach.dao.bean.User;
 import net.golovach.dao.dao.UserDao;
@@ -127,7 +126,7 @@ public class UserDaoJdbc implements UserDao {
     }
 
     @Override
-    public void insert(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+    public void insert(User user) throws DBException {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         try {
@@ -154,19 +153,18 @@ public class UserDaoJdbc implements UserDao {
         return ps;
     }
 
-    private PreparedStatement getBatchInsertPreparedStatement(List<User> users, Connection conn, PreparedStatement ps,int statement) throws SQLException {
-        ps = conn.prepareStatement(INSERT_SQL,statement);
+    private void BatchInsertPreparedStatement(List<User> users, Connection conn, int statement) throws SQLException {
+        PreparedStatement ps = conn.prepareStatement(INSERT_SQL, statement);
         for(User user:users){
             ps.setString(1, user.getLogin());
             ps.setString(2, user.getEmail());
             ps.addBatch();
         }
         ps.executeBatch();
-        return ps;
     }
 
     @Override
-    public int InsertWithReturnGeneratedKeys(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+    public int InsertWithReturnGeneratedKeys(User user) throws DBException {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         int key = -1;
@@ -192,7 +190,7 @@ public class UserDaoJdbc implements UserDao {
     }
 
     @Override
-    public void BulkInsert(List<User> Users) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+    public void BulkInsert(List<User> Users) throws DBException {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         try {
@@ -200,11 +198,8 @@ public class UserDaoJdbc implements UserDao {
             for(User user:Users)
                 CheckInputUserData(user, conn);
 
-            ps = getBatchInsertPreparedStatement(Users, conn, ps,Statement.NO_GENERATED_KEYS);
-//            ResultSet rs =  ps.getResultSet();
-//            while(rs.next()){
-//                System.out.println(rs.getString(2)+ "inserted with ID="+rs.getInt(1));
-//            }
+            BatchInsertPreparedStatement(Users, conn, Statement.NO_GENERATED_KEYS);
+
             conn.commit();
 
         } catch (SQLException e) {

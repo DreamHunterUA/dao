@@ -59,12 +59,16 @@ public class SimpleTest {
         Users.add(newUser(2, "Sara", "y@b.com"));
         Users.add(newUser(3, "Anna", "zcx.com"));
         Users.add(newUser(4,"Steve","steve@com.ua"));
-        System.out.println("INSERT NEW LIST OF USERS:");
+        System.out.println("INSERT NEW LIST OF USERS");
         dao.BulkInsert(Users);
+        for (User user:Users){
+            System.out.println( user.getLogin()+" inserted ");
+        }
         System.out.println("ALL CURRENT USERS:");
         for (User user : dao.selectAll()) {
             System.out.println("    " + user.toString());
         }
+
     }
 
     public static User newUser(int id, String login, String email) {
