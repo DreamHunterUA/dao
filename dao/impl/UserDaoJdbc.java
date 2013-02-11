@@ -45,8 +45,7 @@ public class UserDaoJdbc implements UserDao {
         Statement statement = null;
         ResultSet rs = null;
         try {
-            conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-            conn.setAutoCommit(false);
+            PrepareConnection(conn);
             statement = conn.createStatement();
             rs = statement.executeQuery(SELECT_ALL_SQL);
             List<User> result = new ArrayList<User>();
@@ -81,8 +80,7 @@ public class UserDaoJdbc implements UserDao {
         Statement statement = null;
         ResultSet rs = null;
         try {
-            conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-            conn.setAutoCommit(false);
+            PrepareConnection(conn);
             statement = conn.createStatement();
             rs = statement.executeQuery(SELECT_ALL_SQL);
             List<User> result = new ArrayList<User>();
@@ -113,8 +111,7 @@ public class UserDaoJdbc implements UserDao {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         try {
-            conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-            conn.setAutoCommit(false);
+            PrepareConnection(conn);
             ps = conn.prepareStatement(DELETE_BY_ID_SQL);
             ps.setInt(1, id);
             int result = ps.executeUpdate();
@@ -134,20 +131,11 @@ public class UserDaoJdbc implements UserDao {
         Connection conn = getConnection();
         PreparedStatement ps = null;
         try {
-            conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-            conn.setAutoCommit(false);
+            PrepareConnection(conn);
 
-            if (existWithLogin0(conn, user.getLogin())) {
-                throw new NotUniqueUserLoginException("Login '" + user.getLogin() + "' doubled");
-            }
-            if (existWithEmail0(conn, user.getEmail())) {
-                throw new NotUniqueUserEmailException("Email '" + user.getEmail() + "' doubled");
-            }
+            CheckInputUserData(user, conn);
 
-            ps = conn.prepareStatement(INSERT_SQL);
-            ps.setString(1, user.getLogin());
-            ps.setString(2, user.getEmail());
-            ps.executeUpdate();
+            ps = getInsertPreparedStatement(user, conn, ps,Statement.NO_GENERATED_KEYS);
             conn.commit();
         } catch (SQLException e) {
             JdbcUtils.rollbackQuietly(conn);
@@ -158,6 +146,14 @@ public class UserDaoJdbc implements UserDao {
         }
     }
 
+    private PreparedStatement getInsertPreparedStatement(User user, Connection conn, PreparedStatement ps,int statement) throws SQLException {
+        ps = conn.prepareStatement(INSERT_SQL,statement);
+        ps.setString(1, user.getLogin());
+        ps.setString(2, user.getEmail());
+        ps.executeUpdate();
+        return ps;
+    }
+
     @Override
     public int InsertWithReturnGeneratedKeys(User user) throws DBException, NotUniqueUserLoginException, NotUniqueUserEmailException {
         Connection conn = getConnection();
@@ -165,20 +161,11 @@ public class UserDaoJdbc implements UserDao {
         int key = -1;
         ResultSet keys = null;
         try {
-            conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-            conn.setAutoCommit(false);
+            PrepareConnection(conn);
 
-            if (existWithLogin0(conn, user.getLogin())) {
-                throw new NotUniqueUserLoginException("Login '" + user.getLogin() + "' doubled");
-            }
-            if (existWithEmail0(conn, user.getEmail())) {
-                throw new NotUniqueUserEmailException("Email '" + user.getEmail() + "' doubled");
-            }
+            CheckInputUserData(user, conn);
 
-            ps = conn.prepareStatement(INSERT_SQL,Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, user.getLogin());
-            ps.setString(2, user.getEmail());
-            ps.executeUpdate();
+            ps = getInsertPreparedStatement(user, conn, ps,Statement.RETURN_GENERATED_KEYS);
             keys = ps.getGeneratedKeys();
             keys.next();
             key = keys.getInt(1);
@@ -191,6 +178,20 @@ public class UserDaoJdbc implements UserDao {
             JdbcUtils.closeQuietly(ps);
             JdbcUtils.closeQuietly(conn);
         }
+    }
+
+    private void CheckInputUserData(User user, Connection conn) throws SQLException, NotUniqueUserLoginException, NotUniqueUserEmailException {
+        if (existWithLogin0(conn, user.getLogin())) {
+            throw new NotUniqueUserLoginException("Login '" + user.getLogin() + "' doubled");
+        }
+        if (existWithEmail0(conn, user.getEmail())) {
+            throw new NotUniqueUserEmailException("Email '" + user.getEmail() + "' doubled");
+        }
+    }
+
+    private void PrepareConnection(Connection conn) throws SQLException {
+        conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+        conn.setAutoCommit(false);
     }
 
     private boolean existWithLogin0(Connection conn, String login) throws SQLException {
